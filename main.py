@@ -8,7 +8,9 @@ from tensorflow.keras import callbacks
 import model
 
 import utils
+import tf_utils
 import tensorflow as tf
+import yaml
 
 # 
 
@@ -18,23 +20,44 @@ def main(**kwargs):
     import utils
     import os 
 
-    dataset = utils.CoMADataset(kwargs['input'], kwargs['rig_point_path']).load_data()
-    n_component = len(dataset['examples'])
-    n_component = 8
-
-    print(n_component)
+    
+    
     checkpoint_root = os.path.join(kwargs['checkpoint_dir'], kwargs['name'])
 
     print(checkpoint_root)
-    checkpoint_callback = utils.TFcheckpoint_callback_builder(checkpoint_root)
+    checkpoint_callback = tf_utils.TFcheckpoint_callback_builder(checkpoint_root)
     
+    tmp_mode = kwargs['mode']
+    #configure serialization
+    if os.path.exists(os.path.join(checkpoint_root, "model.conf")):
+        with open(os.path.join(checkpoint_root, "model.conf")) as f:
+            kwargs = yaml.load(f, Loader=yaml.FullLoader)
+    else : # write 
+        with open(os.path.join(checkpoint_root, "model.conf"), 'w') as f:
+            yaml.dump(kwargs, f)
+    kwargs['mode'] = tmp_mode
+
+
+    dataLoader = utils.Dataset_Factory.Build_from_options(input=kwargs['input'], rig_point_path=kwargs['rig_point_path'])
+
+    # dataset = utils.CoMADataset(kwargs['input'], kwargs['rig_point_path']).load_data()
+    dataset = dataLoader.load_data()
+
+
+
+    n_component = len(dataset['examples'])
+    n_component = 8
+    print(n_component)
+
+
+      
     facebaker_model, current_epochs, unflat_f = model.ModelBuilder( dataset['examples'], 
-                                checkpoint_root=checkpoint_root,
-                                n_component = n_component ,
-                                optimizer = kwargs["optimizer"], 
-                                loss=kwargs["loss"],
-                                use_numeric=kwargs['use_numeric']
-                                ).create_model(num_rig_control_variables=len(dataset['rig_data']))
+                                                                    checkpoint_root = checkpoint_root,
+                                                                    n_component = n_component ,
+                                                                    optimizer = kwargs["optimizer"], 
+                                                                    loss=kwargs["loss"],
+                                                                    use_numeric=kwargs['use_numeric']
+                                                                    ).create_model(num_rig_control_variables=len(dataset['rig_data']))
 
 
     if kwargs['mode'] == "train":
@@ -54,16 +77,26 @@ def main(**kwargs):
                                         batch_size = kwargs['batch_size']
                                         )
         print(result.shape)
-        utils.CoMADataset.save_data(
+        dataLoader.save_data(
                                     dataset["Ground_Truth"], reference_facet=dataset['ref']['f'], 
                                     output_directory=os.path.join(kwargs['output'], kwargs['name']),
                                     prefix_name="input_"
                                     )
-        utils.CoMADataset.save_data(
+        dataLoader.save_data(
                                     unflat_f(result.T), reference_facet=dataset['ref']['f'], 
                                     output_directory=os.path.join(kwargs['output'], kwargs['name']),
                                     prefix_name="pred_"
                                     )
+        # utils.CoMADataset.save_data(
+        #                             dataset["Ground_Truth"], reference_facet=dataset['ref']['f'], 
+        #                             output_directory=os.path.join(kwargs['output'], kwargs['name']),
+        #                             prefix_name="input_"
+        #                             )
+        # utils.CoMADataset.save_data(
+        #                             unflat_f(result.T), reference_facet=dataset['ref']['f'], 
+        #                             output_directory=os.path.join(kwargs['output'], kwargs['name']),
+        #                             prefix_name="pred_"
+        #                             )
 
 
 

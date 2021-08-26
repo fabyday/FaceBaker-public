@@ -1,8 +1,11 @@
 from utils import data_io as dataio
+from utils import mesh2numpy as m2n
 
 
 import numpy as np 
 import os 
+
+import yaml
 
 
 class CoMADataset(dataio.AbstractDataset):
@@ -51,6 +54,28 @@ class CoMADataset(dataio.AbstractDataset):
 
         
         return True
+
+    @staticmethod
+    def preprocess_dataset(input_path, output_path, **kwargs):
+        
+        
+        ext = kwargs.get("ext", "obj")
+        filename = kwargs.get("filename", "data")
+        size = kwargs.get("size", 1000)
+        discard_res = kwargs.get("discard_res", False)
+        
+        m2n.mesh2numpy(
+                        input_path, os.path.join(output_path, "data"), 
+                        ext, filename, size, discard_res
+                        )
+
+
+        # meta data used by Dataset_Factory.
+        infos = {name : "coma"}
+        with open(os.path.join(output_path, "file_info.yaml"), 'w') as f:
+            yaml.dump(infos, f)
+        
+
 
     def load_data(self):
         """

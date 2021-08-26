@@ -37,5 +37,6 @@ def glob_multiple_file_types(*patterns, **kwargs):
         return [glob(pattern1) + glob(pattern2) + .... glob(pattern_n)]
     """
     recursive = kwargs.get("recursive", False)
-    
+
     return [path for patt in patterns for path in glob.glob(patt, recursive=recursive)]
+    

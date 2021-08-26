@@ -105,7 +105,7 @@ class ModelBuilder:
         # Either restore the latest model, or create a fresh one
         # if there is no checkpoint available.
         import os 
-        checkpoints = [check_pointroot + "/" + name for name in os.listdir(check_pointroot)]
+        checkpoints = [check_pointroot + os.sep + name for name in os.listdir(check_pointroot) if name != "model.conf"]
         if checkpoints:
             latest_checkpoint = max(checkpoints, key=os.path.getctime)
             print("Restoring from", latest_checkpoint)

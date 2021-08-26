@@ -31,21 +31,84 @@ class AbstractDataset(object):
         raise NotImplementedError()
 
 
+def save_npz(fname : str, **kwargs):
+    with open(fname, mode="wb") as f:
+        np.savez(f, **kwargs)
+
+def load_npz(fname : str):
+    # with open(fname, mode="rb") as f:
+    #     return np.load(f,allow_pickle=True)
+    return np.load(fname, allow_pickle=True)
+
+
+def save_npy(fname : str, arr : np.ndarray):
+    with open(fname, mode="wb") as f:
+        np.save(f, arr)
+
 def load_npy(fname : str):
     with open(fname, mode="rb") as f:
         return np.load(f, allow_pickle=True)
     
 def load_rig_data(fname : str):
+    """
+        load rig point data
+        [
+            size(total rig point size),
+            rig1
+            rig2
+            .
+            .
+            .
+            rig_n
+        ]
+
+
+    """
     buff_size = 256
+    reval = []
     with open(fname, "r") as f:
         num_str = f.readline(buff_size)
         num = num_str.split(__comment_str)[0]
         size = int(num)
-        reval = []
         for _ in range(size):
             reval.append(int(f.readline(buff_size)))
             
-    return reval    
+    return reval 
+
+def load_weights_data(fname : str):
+    """
+        load weights data 
+        [ 0.xxxx 0.xxxxx ..... 0.xxxxx, 0.xxxxx ] style.
+    """
+    buff_size = 256
+    reval = []
+    with open(fname, "r") as f:
+        while(True):
+            line = f.readline(buff_size)
+            if line :
+                break
+            reval.append(float(line))
+    return np.array(reval).reshape(1, -1)
+
+
+def load_text_data(fname : str):
+    """
+        load text data
+        [ names1 name2 ... names_n-1 names_n ] style.
+    """
+    buff_size = 256
+    reval = []
+    print(os.path.exists(fname))
+    with open(fname, "r") as f:
+        while(True):
+            line = f.readline(buff_size).rstrip() # remove \n
+            if not line :
+                break
+            reval.append(line)
+    return reval 
+
+
+
 
 
 def save_mesh(fname : str, v : ndarray, f : ndarray):
@@ -72,12 +135,14 @@ def load_file_from_directory(dname : str,
                              glob_eval_lazy=True
                              ):
     """
+        GENERIC LOAD FUNCTION
+        
         dname : directory name
         ext_list : extension list 
         load_function : data load function. it return loaded data. 
                         its output params are used as an arguments to the next function(save_function).
         save_function : save data after load data. 
-                        function params is save_function(tmp_reval, lf_re1, lf_re2.. lf_re_n)
+                        function params is save_function(tmp_reval, lf_re1, lf_re2.. lf_re_n )
         comp : custom sort function. if none, it doesn't concearn sort.
         recursive : recursively find files. 
         glob_eval_lazy : if True, internally glob.iglob is used. or False, glob.glob is used.
@@ -98,16 +163,16 @@ def load_file_from_directory(dname : str,
     
             
     
-
-    search_pattern = [os.path.join(dname, "**", ext) for ext in ext_list ]
+    
+    search_pattern = [os.path.join(dname, "**"+ (ext if ext[0] == "." else "."+ext) ) for ext in ext_list ]
     
     
     # __MAKE_NAME_LIST__
     file_names = None
     if glob_eval_lazy :
-        file_names = fio.iglob_multiple_file_type(*search_pattern, recursive=recursive)
+        file_names = fio.iglob_multiple_file_types(*search_pattern, recursive=recursive)
     else :
-        file_names = fio.glob_multiple_file_type(*search_pattern, recursive=recursive)
+        file_names = fio.glob_multiple_file_types(*search_pattern, recursive=recursive)
     
     
     # __SORT_NAME__
@@ -115,14 +180,13 @@ def load_file_from_directory(dname : str,
         if len(signature(comp).parameters) == 2 : # check! does it have 2 params? comp(a, b) -> int
             file_names = sorted(file_names, key=functools.cmp_to_key(comp)) # if yes! data list is sorted by comp function
     
-
     # __LOAD_MESH_DATA__
-    reval = None
+    reval = []
     for m_name in file_names:
         s = load_function(m_name)
-        save_function(reval, s)
+        save_function(reval, *s)
 
-    return file_names, reval
+    return reval
 
 
 def load_npy_from_directory(dname : str, comp=None, recursive=True, glob_eval_lazy=True):
@@ -194,13 +258,11 @@ def load_mesh_from_directory(dname : str, comp=None, recursive=True, glob_eval_l
     else :
         mesh_names = fio.glob_multiple_file_types(*search_pattern, recursive=recursive)
     
-    
     # __SORT_NAME__
     if hasattr(comp, "__call__"): # check is it CALLABLE?(Function, is it?)
         if len(signature(comp).parameters) == 2 : # check! does it have 2 params? comp(a, b) -> int
             mesh_names = sorted(mesh_names, key=functools.cmp_to_key(comp)) # if yes! data list is sorted by comp function
     
-
     # __LOAD_MESH_DATA__
     mesh_v_list = [] # vertex_list
     mesh_f_list = [] # face list
