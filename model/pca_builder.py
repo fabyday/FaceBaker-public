@@ -71,6 +71,7 @@ class BlendShapePcaBuilder():
 
         if "n_component" in kwargs :
             self.n_component = kwargs.get("n_component", 3)
+        print("selfnconf,", self.n_component)
         
 
 

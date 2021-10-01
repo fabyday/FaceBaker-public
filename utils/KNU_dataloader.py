@@ -260,9 +260,26 @@ class KNUDataset(dataio.AbstractDataset):
         self.rig_data = dataio.load_rig_data(self.rig_file_path)
         self.rig_data_size = len(self.rig_data)
         
-        self.X = self.train_data[:, self.rig_data, :].reshape(-1, self.rig_data_size*3) # [N, len(rigdata)*dims(3)]
-        self.GT = self.train_data # ground_truth
 
+        # orig
+        # self.X = self.train_data[:, self.rig_data, :].reshape(-1, self.rig_data_size*3) # [N, len(rigdata)*dims(3)]
+        # self.X = self.X.reshape(-1, self.rig_data_size*3)
+        
+        # train[rig_rows] - ref[rig_rows]
+        # self.X = self.train_data[:, self.rig_data, :] - np.expand_dims(self.ref_mesh['v'], 0)[:, self.rig_data, :]
+        # self.X = self.X.reshape(-1, self.rig_data_size*3)
+        # self.X = self.X.reshape(-1, self.rig_data_size*3)
+        
+        # train[rig_rows, :] - ref[rig_rows, :]
+        self.X = np.zeros_like(self.train_data)
+        self.X[:, self.rig_data, :] = self.train_data[:, self.rig_data, :] - np.expand_dims(self.ref_mesh['v'], 0)[:, self.rig_data, :]
+        n, v, d = self.X.shape
+        self.X = self.X.reshape(n,v*d)
+        
+        self.GT = self.train_data # ground_truth
+        
+        # prepropcess
+        self.ground_truth_weights = np.squeeze(self.ground_truth_weights)
         
         return { 
                 "data_fname" : self.names, "X" : self.X, "Ground_Truth" : self.GT, 
